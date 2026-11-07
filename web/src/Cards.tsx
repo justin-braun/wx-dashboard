@@ -101,6 +101,17 @@ function HighLow({ high, low, kind, system }: { high?: { value: number; time: nu
   );
 }
 
+// ---------------------------------------------------------------- visibility
+
+/** Which optional cards have data; lets the grid lay out only what will render. */
+export const has = {
+  indoor: (o: Observation) => o.values.indoorTempF !== undefined || o.values.indoorHumidity !== undefined,
+  sun: (o: Observation) => o.values.uvIndex !== undefined || o.values.solarWm2 !== undefined,
+  lightning: (o: Observation) => o.values.lightningDay !== undefined,
+  air: (o: Observation) => o.values.pm25 !== undefined || o.values.pm25Indoor !== undefined || o.values.co2Ppm !== undefined,
+  sensors: (o: Observation) => !!o.sensors?.length,
+};
+
 // ---------------------------------------------------------------- outdoor & indoor
 
 export function TemperatureCard({ obs, summary, system }: { obs: Observation; summary?: DailySummary; system: UnitSystem }) {
@@ -108,6 +119,7 @@ export function TemperatureCard({ obs, summary, system }: { obs: Observation; su
   const showFeels = v.feelsLikeF !== undefined && v.tempF !== undefined && Math.abs(v.feelsLikeF - v.tempF) >= 0.5;
   return (
     <Card title="Outdoor" icon="thermometer" className="card-hero">
+      <div className="hero-layout">
       <div className="hero">
         <Value kind="temp" system={system} v={v.tempF} big />
         <div className="hero-side">
@@ -122,7 +134,7 @@ export function TemperatureCard({ obs, summary, system }: { obs: Observation; su
           </div>
         </div>
       </div>
-      <div className="stats">
+      <div className="stats hero-stats">
         <HighLow high={summary?.tempHigh} low={summary?.tempLow} kind="temp" system={system} />
         <Stat label="Humidity" icon="droplet">
           <Value kind="percent" system={system} v={v.humidity} />
@@ -130,6 +142,7 @@ export function TemperatureCard({ obs, summary, system }: { obs: Observation; su
         <Stat label="Dew point" icon="dew">
           <Value kind="temp" system={system} v={v.dewPointF} />
         </Stat>
+      </div>
       </div>
     </Card>
   );
@@ -140,6 +153,7 @@ export function IndoorCard({ obs, summary, system }: { obs: Observation; summary
   if (v.indoorTempF === undefined && v.indoorHumidity === undefined) return null;
   return (
     <Card title="Indoor" icon="home" className="card-hero">
+      <div className="hero-layout">
       <div className="hero indoor">
         <Value kind="temp" system={system} v={v.indoorTempF} big />
         <div className="hero-side">
@@ -155,7 +169,7 @@ export function IndoorCard({ obs, summary, system }: { obs: Observation; summary
           )}
         </div>
       </div>
-      <div className="stats">
+      <div className="stats hero-stats">
         <HighLow high={summary?.indoorTempHigh} low={summary?.indoorTempLow} kind="temp" system={system} />
         <Stat label="Humidity range" icon="droplet">
           <span className="value">
@@ -171,6 +185,7 @@ export function IndoorCard({ obs, summary, system }: { obs: Observation; summary
           </Stat>
         )}
       </div>
+      </div>
     </Card>
   );
 }
@@ -178,7 +193,7 @@ export function IndoorCard({ obs, summary, system }: { obs: Observation; summary
 // ---------------------------------------------------------------- wind
 
 function Compass({ dir, gustDir, speed, system }: { dir?: number; gustDir?: number; speed?: number; system: UnitSystem }) {
-  const size = 168;
+  const size = 200;
   const c = size / 2;
   const r = c - 14;
   const pt = (deg: number, rad: number) => {
@@ -204,13 +219,13 @@ function Compass({ dir, gustDir, speed, system }: { dir?: number; gustDir?: numb
         return <line key={d} x1={x1} y1={y1} x2={x2} y2={y2} className={major || mid ? 'compass-tick major' : 'compass-tick'} />;
       })}
       {(['N', 'E', 'S', 'W'] as const).map((l, i) => {
-        const [x, y] = pt(i * 90, r - 30);
+        const [x, y] = pt(i * 90, r - 34);
         return <text key={l} x={x} y={y} dy="0.35em" textAnchor="middle" className="compass-label">{l}</text>;
       })}
       {gustDir !== undefined && marker(gustDir, 'compass-gust', -12)}
       {dir !== undefined && marker(dir, 'compass-needle', -18)}
-      <text x={c} y={c + 2} textAnchor="middle" className="compass-speed">{fmt('speed', system, speed, 0)}</text>
-      <text x={c} y={c + 20} textAnchor="middle" className="compass-unit">{unit('speed', system)}</text>
+      <text x={c} y={c + 4} textAnchor="middle" className="compass-speed">{fmt('speed', system, speed, 0)}</text>
+      <text x={c} y={c + 24} textAnchor="middle" className="compass-unit">{unit('speed', system)}</text>
     </svg>
   );
 }
@@ -255,6 +270,14 @@ export function PressureCard({ obs, summary, system }: { obs: Observation; summa
           </>
         ) : (
           <span className="muted">Trend available after 3 h of data</span>
+        )}
+      </div>
+      <div className="stats">
+        <HighLow high={summary?.pressureHigh} low={summary?.pressureLow} kind="pressure" system={system} />
+        {obs.values.pressureAbsInHg !== undefined && (
+          <Stat label="Absolute" icon="gauge">
+            <Value kind="pressure" system={system} v={obs.values.pressureAbsInHg} />
+          </Stat>
         )}
       </div>
     </Card>
@@ -305,6 +328,7 @@ export function SunCard({ obs, summary, system }: { obs: Observation; summary?: 
   if (v.uvIndex === undefined && v.solarWm2 === undefined) return null;
   return (
     <Card title="Sun" icon="sun">
+      <div className="wide-body">
       {v.uvIndex !== undefined && uv && (
         <div className="uv">
           <div className="split">
@@ -320,6 +344,8 @@ export function SunCard({ obs, summary, system }: { obs: Observation; summary?: 
       <div className="stats">
         <Stat label="Solar radiation"><Value kind="solar" system={system} v={v.solarWm2} /></Stat>
         <Stat label="Peak today" icon="arrowUp"><Value kind="solar" system={system} v={summary?.solarMax?.value} /></Stat>
+        {summary?.uvMax && <Stat label="UV peak today" icon="arrowUp"><span className="value"><Digits>{summary.uvMax.value}</Digits></span></Stat>}
+      </div>
       </div>
     </Card>
   );
@@ -352,6 +378,7 @@ export function LightningCard({ obs, system, now }: { obs: Observation; system: 
   const recent = v.lightningTime !== undefined && now - v.lightningTime < 30 * 60_000;
   return (
     <Card title="Lightning" icon="bolt" aside={recent ? <Badge level="serious">Nearby activity</Badge> : undefined}>
+      <div className="wide-body">
       <div className="split">
         <div>
           <div className="stat-label">Strikes today</div>
@@ -370,6 +397,7 @@ export function LightningCard({ obs, system, now }: { obs: Observation; system: 
         )}
         {v.lightningTime !== undefined && <Stat label="Last strike"><span className="value">{ago(v.lightningTime, now)}</span></Stat>}
       </div>
+      </div>
     </Card>
   );
 }
@@ -381,6 +409,7 @@ export function AirCard({ obs, system }: { obs: Observation; system: UnitSystem 
   const aqi = aqiFromPm25(pm);
   return (
     <Card title="Air quality" icon="leaf" aside={aqi ? <Badge level={aqi.level}>{aqi.label}</Badge> : undefined}>
+      <div className="wide-body">
       {aqi && (
         <div>
           <div className="stat-label">AQI (PM2.5{v.pm25 === undefined ? ', indoor' : ''})</div>
@@ -395,6 +424,7 @@ export function AirCard({ obs, system }: { obs: Observation; system: UnitSystem 
             <span className="value"><Digits>{Math.round(v.co2Ppm)}</Digits><span className="value-unit">ppm</span></span>
           </Stat>
         )}
+      </div>
       </div>
     </Card>
   );

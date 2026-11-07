@@ -83,7 +83,7 @@ body {
   background: var(--page);
   color: var(--text-primary);
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
@@ -315,17 +315,34 @@ select {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
 }
 
+.grid-cell {
+  display: flex;
+  min-width: 0;
+}
+
+.grid-cell > .card {
+  flex: 1;
+}
+
 .card {
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
   background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 16px 18px 18px;
+  padding: 18px 22px 20px;
   min-width: 0;
+}
+
+/* Detail rows sit at the bottom so cards in a row line up. */
+.card > .stats {
+  margin-top: auto;
+  padding-top: 16px;
 }
 
 .card-head {
@@ -342,23 +359,17 @@ select {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
-@media (min-width: 900px) {
-  .card-hero,
-  .card-wind {
-    grid-column: span 2;
-  }
-}
-
 .value {
   font-weight: 600;
-  font-size: 1.125rem;
+  font-size: 1.5rem;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -391,7 +402,7 @@ select {
 
 .value-big {
   display: inline-block;
-  font-size: 2.5rem;
+  font-size: 3rem;
   line-height: 1.1;
   letter-spacing: -0.02em;
 }
@@ -410,9 +421,9 @@ select {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 12px 16px;
-  margin-top: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px 20px;
+  margin-top: 16px;
 }
 
 .stats-col {
@@ -425,8 +436,9 @@ select {
 .stat-label {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.8125rem;
+  gap: 6px;
+  margin-bottom: 2px;
+  font-size: 0.9375rem;
   color: var(--text-muted);
 }
 
@@ -438,7 +450,7 @@ select {
 }
 
 .when {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: var(--text-muted);
 }
 
@@ -451,7 +463,7 @@ select {
 
 .footnote {
   margin-top: 12px;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: var(--text-muted);
 }
 
@@ -476,8 +488,40 @@ select {
 }
 
 .hero .value-big {
-  font-size: clamp(3.5rem, 8vw, 5rem);
+  font-size: clamp(4rem, 8vw, 6rem);
   letter-spacing: -0.03em;
+}
+
+/* Outdoor / indoor: big reading left, 2x2 details right when the card is wide. */
+.hero-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+@container (min-width: 500px) {
+  .hero-layout {
+    flex-direction: row;
+    align-items: center;
+    gap: 32px;
+  }
+  .hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .hero-stats {
+    flex: 0 1 360px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 28px;
+    margin-top: 0;
+  }
+}
+
+.secondary {
+  font-size: 1rem;
 }
 
 .hero-side {
@@ -497,7 +541,36 @@ select {
 }
 
 .hero-humidity .value {
-  font-size: 1.75rem;
+  font-size: 2rem;
+}
+
+/* Small cards (sun, lightning, air) that end up wide: headline left, details right. */
+.wide-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.wide-body > .stats {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+@container (min-width: 520px) {
+  .wide-body {
+    flex-direction: row;
+    align-items: center;
+    gap: 40px;
+  }
+  .wide-body > :first-child {
+    flex: 1 1 240px;
+  }
+  .wide-body > .stats {
+    flex: 1 1 320px;
+    margin-top: 0;
+    padding-top: 0;
+  }
 }
 
 .pressure-trend {
@@ -508,9 +581,17 @@ select {
 
 .wind {
   display: flex;
+  flex: 1;
   align-items: center;
-  gap: 20px;
+  justify-content: space-around;
+  gap: 24px;
   flex-wrap: wrap;
+}
+
+.wind .stats-col {
+  flex: 1 1 260px;
+  max-width: 420px;
+  gap: 22px 28px;
 }
 
 .compass {
@@ -531,7 +612,7 @@ select {
 }
 .compass-label {
   fill: var(--text-muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .compass-needle {
@@ -550,12 +631,12 @@ select {
 .compass-speed {
   fill: var(--text-primary);
   font-family: var(--font-digits);
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 700;
 }
 .compass-unit {
   fill: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* meter */
@@ -649,7 +730,7 @@ select {
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
 }
 
@@ -711,13 +792,13 @@ select {
 
 .chart .tick {
   fill: var(--tick);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
 .chart .end-label {
   fill: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -828,6 +909,12 @@ select {
   .wind {
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
+    gap: 20px;
+  }
+  .wind .stats-col {
+    flex: none;
+    max-width: none;
   }
   .wind .compass {
     align-self: center;

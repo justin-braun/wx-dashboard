@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AirCard,
+  has,
   IndoorCard,
   LightningCard,
   PressureCard,
@@ -102,17 +103,19 @@ export function App() {
       ) : (
         <main>
           <BatteryNotice obs={obs} />
-          <div className="grid">
-            <TemperatureCard obs={obs} summary={summary} system={system} />
-            <WindCard obs={obs} summary={summary} system={system} />
-            <IndoorCard obs={obs} summary={summary} system={system} />
-            <PressureCard obs={obs} summary={summary} system={system} />
-            <RainCard obs={obs} system={system} now={now} />
-            <SunCard obs={obs} summary={summary} system={system} />
-            <LightningCard obs={obs} system={system} now={now} />
-            <AirCard obs={obs} system={system} />
-            <SensorsCard obs={obs} system={system} />
-          </div>
+          <CardGrid
+            items={[
+              { key: 'outdoor', span: 2, node: <TemperatureCard obs={obs} summary={summary} system={system} /> },
+              { key: 'wind', span: 2, node: <WindCard obs={obs} summary={summary} system={system} /> },
+              has.indoor(obs) && { key: 'indoor', span: 2, node: <IndoorCard obs={obs} summary={summary} system={system} /> },
+              { key: 'pressure', span: 1, node: <PressureCard obs={obs} summary={summary} system={system} /> },
+              { key: 'rain', span: 1, node: <RainCard obs={obs} system={system} now={now} /> },
+              has.sun(obs) && { key: 'sun', span: 1, node: <SunCard obs={obs} summary={summary} system={system} /> },
+              has.lightning(obs) && { key: 'lightning', span: 1, node: <LightningCard obs={obs} system={system} now={now} /> },
+              has.air(obs) && { key: 'air', span: 1, node: <AirCard obs={obs} system={system} /> },
+              has.sensors(obs) && { key: 'sensors', span: 1, node: <SensorsCard obs={obs} system={system} /> },
+            ]}
+          />
 
           <section className="history">
             <div className="history-head">
@@ -141,6 +144,67 @@ export function App() {
         {obs && <span>Observation time {dateTime(obs.time)}</span>}
         {live.version && <span>wx-dashboard {/^\d/.test(live.version) ? `v${live.version}` : live.version}</span>}
       </footer>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- card grid
+
+interface GridItem {
+  key: string;
+  /** Preferred width in columns. */
+  span: number;
+  node: ReactNode;
+}
+
+/**
+ * Lays cards out in as many columns as fit, then widens the last card of any
+ * unfinished row so every row spans the full width (no ragged gaps).
+ */
+function CardGrid({ items }: { items: (GridItem | false)[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(1200);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const cols = width >= 1080 ? 4 : width >= 600 ? 2 : 1;
+  const placed: GridItem[] = [];
+  let row: GridItem[] = [];
+  let used = 0;
+  // Share a short row's leftover columns among its cards, starting with the smallest.
+  const closeRow = () => {
+    let extra = cols - used;
+    const order = [...row].sort((a, b) => a.span - b.span);
+    for (let i = 0; extra > 0 && order.length; i = (i + 1) % order.length, extra--) order[i].span++;
+    row = [];
+    used = 0;
+  };
+  for (const item of items) {
+    if (!item) continue;
+    const cell = { ...item, span: Math.min(item.span, cols) };
+    if (used + cell.span > cols) closeRow();
+    placed.push(cell);
+    row.push(cell);
+    used += cell.span;
+    if (used === cols) {
+      row = [];
+      used = 0;
+    }
+  }
+  if (used > 0) closeRow();
+
+  return (
+    <div className="grid" ref={ref} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      {placed.map((p) => (
+        <div key={p.key} className="grid-cell" style={{ gridColumn: `span ${p.span}` }}>
+          {p.node}
+        </div>
+      ))}
     </div>
   );
 }
