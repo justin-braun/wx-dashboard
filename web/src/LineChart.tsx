@@ -226,12 +226,13 @@ export function LineChart({ points, series, from, to, gapMs, format, unit, heigh
 
         {area &&
           geo.paths.map(({ s, a }) => <path key={`a-${s.key}`} d={a} fill={s.color} fillOpacity={0.1} stroke="none" />)}
-        {geo.paths.map(({ s, d }) => (
+        {/* Reverse so the first-listed series is drawn on top where lines overlap. */}
+        {[...geo.paths].reverse().map(({ s, d }) => (
           <path key={s.key} d={d} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         ))}
 
         {!hp &&
-          geo.ends.map((e) => (
+          [...geo.ends].reverse().map((e) => (
             <g key={e.s.key}>
               <circle cx={e.x} cy={e.y} r={4} fill={e.s.color} stroke="var(--surface-1)" strokeWidth={2} />
               {e.showLabel && (

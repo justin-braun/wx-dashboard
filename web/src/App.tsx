@@ -365,6 +365,7 @@ const CHARTS: ChartDef[] = [
     kind: 'temp',
     series: [
       { key: 'tempF', label: 'Temperature', color: 'var(--series-2)' },
+      { key: 'feelsLikeF', label: 'Feels like', color: 'var(--series-3)' },
       { key: 'dewPointF', label: 'Dew point', color: 'var(--series-1)' },
     ],
   },
