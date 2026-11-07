@@ -67,7 +67,8 @@ export function fmt(kind: Kind, system: UnitSystem, v: number | undefined, digit
   const c = convert(kind, system, v);
   if (c === undefined || !Number.isFinite(c)) return '—';
   const d = digits ?? SPECS[system][kind].digits;
-  return c.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  // No thousands separators: the segment display font has no comma glyph.
+  return c.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false });
 }
 
 export function unit(kind: Kind, system: UnitSystem): string {

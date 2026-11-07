@@ -1,22 +1,27 @@
 import type { ReactNode } from 'react';
 import type { DailySummary, Observation } from './hooks';
 import { aqiFromPm25, ago, cardinal, clockTime, uvCategory } from './format';
+import { Icon, type IconName } from './Icons';
 import { fmt, unit, type Kind, type UnitSystem } from './units';
 
 type Level = 'good' | 'warning' | 'serious' | 'critical';
 
 interface CardProps {
   title: string;
+  icon?: IconName;
   children: ReactNode;
   className?: string;
   aside?: ReactNode;
 }
 
-export function Card({ title, children, className = '', aside }: CardProps) {
+export function Card({ title, icon, children, className = '', aside }: CardProps) {
   return (
     <section className={`card ${className}`}>
       <header className="card-head">
-        <h2>{title}</h2>
+        <h2>
+          {icon && <Icon name={icon} />}
+          {title}
+        </h2>
         {aside}
       </header>
       {children}
@@ -24,19 +29,27 @@ export function Card({ title, children, className = '', aside }: CardProps) {
   );
 }
 
+/** A number in the segment display font. */
+export function Digits({ children }: { children: ReactNode }) {
+  return <span className="digits">{children}</span>;
+}
+
 export function Value({ kind, system, v, big, digits }: { kind: Kind; system: UnitSystem; v?: number; big?: boolean; digits?: number }) {
   return (
     <span className={big ? 'value value-big' : 'value'}>
-      {fmt(kind, system, v, digits)}
+      <Digits>{fmt(kind, system, v, digits)}</Digits>
       {v !== undefined && unit(kind, system) && <span className="value-unit">{unit(kind, system)}</span>}
     </span>
   );
 }
 
-function Stat({ label, children }: { label: string; children: ReactNode }) {
+function Stat({ label, icon, children }: { label: string; icon?: IconName; children: ReactNode }) {
   return (
     <div className="stat">
-      <div className="stat-label">{label}</div>
+      <div className="stat-label">
+        {icon && <Icon name={icon} size={14} />}
+        {label}
+      </div>
       <div className="stat-value">{children}</div>
     </div>
   );
@@ -73,13 +86,28 @@ function Trend({ delta, kind, system, threshold }: { delta?: number; kind: Kind;
   );
 }
 
-// ---------------------------------------------------------------- hero
+function HighLow({ high, low, kind, system }: { high?: { value: number; time: number }; low?: { value: number; time: number }; kind: Kind; system: UnitSystem }) {
+  return (
+    <>
+      <Stat label="High today" icon="arrowUp">
+        <Value kind={kind} system={system} v={high?.value} />
+        <span className="when">{clockTime(high?.time)}</span>
+      </Stat>
+      <Stat label="Low today" icon="arrowDown">
+        <Value kind={kind} system={system} v={low?.value} />
+        <span className="when">{clockTime(low?.time)}</span>
+      </Stat>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- outdoor & indoor
 
 export function TemperatureCard({ obs, summary, system }: { obs: Observation; summary?: DailySummary; system: UnitSystem }) {
   const v = obs.values;
   const showFeels = v.feelsLikeF !== undefined && v.tempF !== undefined && Math.abs(v.feelsLikeF - v.tempF) >= 0.5;
   return (
-    <Card title="Outdoor" className="card-hero">
+    <Card title="Outdoor" icon="thermometer" className="card-hero">
       <div className="hero">
         <Value kind="temp" system={system} v={v.tempF} big />
         <div className="hero-side">
@@ -95,20 +123,53 @@ export function TemperatureCard({ obs, summary, system }: { obs: Observation; su
         </div>
       </div>
       <div className="stats">
-        <Stat label="High today">
-          <Value kind="temp" system={system} v={summary?.tempHigh?.value} />
-          <span className="when">{clockTime(summary?.tempHigh?.time)}</span>
-        </Stat>
-        <Stat label="Low today">
-          <Value kind="temp" system={system} v={summary?.tempLow?.value} />
-          <span className="when">{clockTime(summary?.tempLow?.time)}</span>
-        </Stat>
-        <Stat label="Humidity">
+        <HighLow high={summary?.tempHigh} low={summary?.tempLow} kind="temp" system={system} />
+        <Stat label="Humidity" icon="droplet">
           <Value kind="percent" system={system} v={v.humidity} />
         </Stat>
-        <Stat label="Dew point">
+        <Stat label="Dew point" icon="dew">
           <Value kind="temp" system={system} v={v.dewPointF} />
         </Stat>
+      </div>
+    </Card>
+  );
+}
+
+export function IndoorCard({ obs, summary, system }: { obs: Observation; summary?: DailySummary; system: UnitSystem }) {
+  const v = obs.values;
+  if (v.indoorTempF === undefined && v.indoorHumidity === undefined) return null;
+  return (
+    <Card title="Indoor" icon="home" className="card-hero">
+      <div className="hero indoor">
+        <Value kind="temp" system={system} v={v.indoorTempF} big />
+        <div className="hero-side">
+          <div className="hero-humidity">
+            <Icon name="droplet" size={22} />
+            <Value kind="percent" system={system} v={v.indoorHumidity} />
+            <span className="muted">humidity</span>
+          </div>
+          {v.indoorFeelsLikeF !== undefined && v.indoorTempF !== undefined && Math.abs(v.indoorFeelsLikeF - v.indoorTempF) >= 0.5 && (
+            <div className="secondary">
+              Feels like <strong>{fmt('temp', system, v.indoorFeelsLikeF)}{unit('temp', system)}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="stats">
+        <HighLow high={summary?.indoorTempHigh} low={summary?.indoorTempLow} kind="temp" system={system} />
+        <Stat label="Humidity range" icon="droplet">
+          <span className="value">
+            <Digits>{fmt('percent', system, summary?.indoorHumidityLow?.value)}</Digits>
+            <span className="range-sep">–</span>
+            <Digits>{fmt('percent', system, summary?.indoorHumidityHigh?.value)}</Digits>
+            <span className="value-unit">%</span>
+          </span>
+        </Stat>
+        {v.indoorDewPointF !== undefined && (
+          <Stat label="Dew point" icon="dew">
+            <Value kind="temp" system={system} v={v.indoorDewPointF} />
+          </Stat>
+        )}
       </div>
     </Card>
   );
@@ -148,8 +209,8 @@ function Compass({ dir, gustDir, speed, system }: { dir?: number; gustDir?: numb
       })}
       {gustDir !== undefined && marker(gustDir, 'compass-gust', -12)}
       {dir !== undefined && marker(dir, 'compass-needle', -18)}
-      <text x={c} y={c - 2} textAnchor="middle" className="compass-speed">{fmt('speed', system, speed, 0)}</text>
-      <text x={c} y={c + 16} textAnchor="middle" className="compass-unit">{unit('speed', system)}</text>
+      <text x={c} y={c + 2} textAnchor="middle" className="compass-speed">{fmt('speed', system, speed, 0)}</text>
+      <text x={c} y={c + 20} textAnchor="middle" className="compass-unit">{unit('speed', system)}</text>
     </svg>
   );
 }
@@ -157,19 +218,19 @@ function Compass({ dir, gustDir, speed, system }: { dir?: number; gustDir?: numb
 export function WindCard({ obs, summary, system }: { obs: Observation; summary?: DailySummary; system: UnitSystem }) {
   const v = obs.values;
   return (
-    <Card title="Wind" className="card-wind">
+    <Card title="Wind" icon="wind" className="card-wind">
       <div className="wind">
         <Compass dir={v.windDirDeg} gustDir={v.windGustDirDeg} speed={v.windSpeedMph} system={system} />
         <div className="stats stats-col">
-          <Stat label="Direction">
+          <Stat label="Direction" icon="compass">
             <span className="value">{cardinal(v.windDirDeg)}</span>
             <span className="when">{v.windDirDeg !== undefined ? `${Math.round(v.windDirDeg)}°` : ''}</span>
           </Stat>
-          <Stat label="Gust"><Value kind="speed" system={system} v={v.windGustMph} /></Stat>
+          <Stat label="Gust" icon="gust"><Value kind="speed" system={system} v={v.windGustMph} /></Stat>
           {v.windSpeedAvg10mMph !== undefined && (
-            <Stat label="10-min average"><Value kind="speed" system={system} v={v.windSpeedAvg10mMph} /></Stat>
+            <Stat label="10-min average" icon="wind"><Value kind="speed" system={system} v={v.windSpeedAvg10mMph} /></Stat>
           )}
-          <Stat label="Max gust today">
+          <Stat label="Max gust today" icon="arrowUp">
             <Value kind="speed" system={system} v={summary?.gustMax?.value} />
           </Stat>
         </div>
@@ -183,9 +244,9 @@ export function WindCard({ obs, summary, system }: { obs: Observation; summary?:
 export function PressureCard({ obs, summary, system }: { obs: Observation; summary?: DailySummary; system: UnitSystem }) {
   const trend = summary?.pressureTrend;
   return (
-    <Card title="Pressure">
+    <Card title="Pressure" icon="gauge">
       <Value kind="pressure" system={system} v={obs.values.pressureRelInHg} big />
-      <div className="secondary">
+      <div className="secondary pressure-trend">
         {trend ? (
           <>
             <span className="trend-word">{trend[0].toUpperCase() + trend.slice(1)}</span>{' '}
@@ -206,7 +267,7 @@ export function RainCard({ obs, system, now }: { obs: Observation; system: UnitS
   const v = obs.values;
   const raining = (v.rainRateInHr ?? 0) > 0;
   return (
-    <Card title="Rain" aside={raining ? <Badge level="warning">Raining</Badge> : undefined}>
+    <Card title="Rain" icon="rain" aside={raining ? <Badge level="warning">Raining</Badge> : undefined}>
       <div className="split">
         <div>
           <div className="stat-label">Today</div>
@@ -243,13 +304,13 @@ export function SunCard({ obs, summary, system }: { obs: Observation; summary?: 
   const uv = uvCategory(v.uvIndex);
   if (v.uvIndex === undefined && v.solarWm2 === undefined) return null;
   return (
-    <Card title="Sun">
+    <Card title="Sun" icon="sun">
       {v.uvIndex !== undefined && uv && (
         <div className="uv">
           <div className="split">
             <div>
               <div className="stat-label">UV index</div>
-              <span className="value value-big">{v.uvIndex}</span>
+              <span className="value value-big"><Digits>{v.uvIndex}</Digits></span>
             </div>
             <Badge level={uv.level}>{uv.label}</Badge>
           </div>
@@ -258,32 +319,18 @@ export function SunCard({ obs, summary, system }: { obs: Observation; summary?: 
       )}
       <div className="stats">
         <Stat label="Solar radiation"><Value kind="solar" system={system} v={v.solarWm2} /></Stat>
-        <Stat label="Peak today"><Value kind="solar" system={system} v={summary?.solarMax?.value} /></Stat>
+        <Stat label="Peak today" icon="arrowUp"><Value kind="solar" system={system} v={summary?.solarMax?.value} /></Stat>
       </div>
     </Card>
   );
 }
 
-// ---------------------------------------------------------------- indoor & extras
-
-export function IndoorCard({ obs, system }: { obs: Observation; system: UnitSystem }) {
-  const v = obs.values;
-  if (v.indoorTempF === undefined && v.indoorHumidity === undefined) return null;
-  return (
-    <Card title="Indoor">
-      <Value kind="temp" system={system} v={v.indoorTempF} big />
-      <div className="stats">
-        <Stat label="Humidity"><Value kind="percent" system={system} v={v.indoorHumidity} /></Stat>
-        {v.indoorDewPointF !== undefined && <Stat label="Dew point"><Value kind="temp" system={system} v={v.indoorDewPointF} /></Stat>}
-      </div>
-    </Card>
-  );
-}
+// ---------------------------------------------------------------- extras
 
 export function SensorsCard({ obs, system }: { obs: Observation; system: UnitSystem }) {
   if (!obs.sensors?.length) return null;
   return (
-    <Card title="Sensors">
+    <Card title="Sensors" icon="sensor">
       <table className="mini-table">
         <tbody>
           {obs.sensors.map((s) => (
@@ -304,16 +351,16 @@ export function LightningCard({ obs, system, now }: { obs: Observation; system: 
   if (v.lightningDay === undefined) return null;
   const recent = v.lightningTime !== undefined && now - v.lightningTime < 30 * 60_000;
   return (
-    <Card title="Lightning" aside={recent ? <Badge level="serious">Nearby activity</Badge> : undefined}>
+    <Card title="Lightning" icon="bolt" aside={recent ? <Badge level="serious">Nearby activity</Badge> : undefined}>
       <div className="split">
         <div>
           <div className="stat-label">Strikes today</div>
-          <span className="value value-big">{v.lightningDay}</span>
+          <span className="value value-big"><Digits>{v.lightningDay}</Digits></span>
         </div>
         {v.lightningHour !== undefined && (
           <div>
             <div className="stat-label">Last hour</div>
-            <span className="value">{v.lightningHour}</span>
+            <span className="value"><Digits>{v.lightningHour}</Digits></span>
           </div>
         )}
       </div>
@@ -333,17 +380,21 @@ export function AirCard({ obs, system }: { obs: Observation; system: UnitSystem 
   const pm = v.pm25 ?? v.pm25Indoor;
   const aqi = aqiFromPm25(pm);
   return (
-    <Card title="Air quality" aside={aqi ? <Badge level={aqi.level}>{aqi.label}</Badge> : undefined}>
+    <Card title="Air quality" icon="leaf" aside={aqi ? <Badge level={aqi.level}>{aqi.label}</Badge> : undefined}>
       {aqi && (
         <div>
           <div className="stat-label">AQI (PM2.5{v.pm25 === undefined ? ', indoor' : ''})</div>
-          <span className="value value-big">{aqi.aqi}</span>
+          <span className="value value-big"><Digits>{aqi.aqi}</Digits></span>
         </div>
       )}
       <div className="stats">
         {pm !== undefined && <Stat label="PM2.5"><Value kind="pm" system={system} v={pm} /></Stat>}
         {v.pm25Avg24h !== undefined && <Stat label="24 h average"><Value kind="pm" system={system} v={v.pm25Avg24h} /></Stat>}
-        {v.co2Ppm !== undefined && <Stat label="CO₂"><span className="value">{Math.round(v.co2Ppm)}<span className="value-unit">ppm</span></span></Stat>}
+        {v.co2Ppm !== undefined && (
+          <Stat label="CO₂">
+            <span className="value"><Digits>{Math.round(v.co2Ppm)}</Digits><span className="value-unit">ppm</span></span>
+          </Stat>
+        )}
       </div>
     </Card>
   );

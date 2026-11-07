@@ -31,6 +31,10 @@ export interface DailySummary {
   tempLow?: Extreme;
   humidityHigh?: Extreme;
   humidityLow?: Extreme;
+  indoorTempHigh?: Extreme;
+  indoorTempLow?: Extreme;
+  indoorHumidityHigh?: Extreme;
+  indoorHumidityLow?: Extreme;
   gustMax?: Extreme;
   rainRateMax?: Extreme;
   solarMax?: Extreme;
@@ -78,6 +82,10 @@ export function summarize(rows: Observation[], latest: Observation, dayStart: nu
     tempLow: extreme(today, 'tempF', 'min'),
     humidityHigh: extreme(today, 'humidity', 'max'),
     humidityLow: extreme(today, 'humidity', 'min'),
+    indoorTempHigh: extreme(today, 'indoorTempF', 'max'),
+    indoorTempLow: extreme(today, 'indoorTempF', 'min'),
+    indoorHumidityHigh: extreme(today, 'indoorHumidity', 'max'),
+    indoorHumidityLow: extreme(today, 'indoorHumidity', 'min'),
     gustMax: extreme(today, 'windGustMph', 'max'),
     rainRateMax: extreme(today, 'rainRateInHr', 'max'),
     solarMax: extreme(today, 'solarWm2', 'max'),

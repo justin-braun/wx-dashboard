@@ -28,6 +28,7 @@
 
   --radius: 14px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-digits: 'DSEG7', ui-monospace, 'SFMono-Regular', Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -338,6 +339,9 @@ select {
 
 .card-head h2,
 .card-head h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -356,6 +360,33 @@ select {
   font-weight: 600;
   font-size: 1.125rem;
   white-space: nowrap;
+}
+
+/* Readings use a seven-segment LCD face. */
+.digits {
+  font-family: var(--font-digits);
+  font-weight: 400;
+  font-size: 0.86em;
+  letter-spacing: 0.02em;
+  font-variant-numeric: normal;
+}
+
+.value-big .digits {
+  font-weight: 700;
+}
+
+.range-sep {
+  margin: 0 0.25em;
+  color: var(--text-muted);
+}
+
+.icon {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.card-head .icon {
+  color: var(--accent);
 }
 
 .value-big {
@@ -392,6 +423,9 @@ select {
 }
 
 .stat-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
@@ -452,6 +486,24 @@ select {
   gap: 4px;
 }
 
+.hero-humidity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero-humidity .icon {
+  color: var(--series-1);
+}
+
+.hero-humidity .value {
+  font-size: 1.75rem;
+}
+
+.pressure-trend {
+  margin-top: 6px;
+}
+
 /* wind */
 
 .wind {
@@ -497,8 +549,9 @@ select {
 }
 .compass-speed {
   fill: var(--text-primary);
-  font-size: 30px;
-  font-weight: 600;
+  font-family: var(--font-digits);
+  font-size: 26px;
+  font-weight: 700;
 }
 .compass-unit {
   fill: var(--text-muted);
@@ -769,4 +822,19 @@ select {
   gap: 6px 20px;
   margin-top: 28px;
   font-size: 0.8125rem;
+}
+
+@media (max-width: 520px) {
+  .wind {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .wind .compass {
+    align-self: center;
+  }
+  .legend {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px 10px;
+  }
 }

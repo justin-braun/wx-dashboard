@@ -12,6 +12,7 @@ import {
   WindCard,
 } from './Cards';
 import { ago, dateTime } from './format';
+import { Icon, type IconName } from './Icons';
 import {
   useHistory,
   useLiveStation,
@@ -104,10 +105,10 @@ export function App() {
           <div className="grid">
             <TemperatureCard obs={obs} summary={summary} system={system} />
             <WindCard obs={obs} summary={summary} system={system} />
+            <IndoorCard obs={obs} summary={summary} system={system} />
             <PressureCard obs={obs} summary={summary} system={system} />
             <RainCard obs={obs} system={system} now={now} />
             <SunCard obs={obs} summary={summary} system={system} />
-            <IndoorCard obs={obs} system={system} />
             <LightningCard obs={obs} system={system} now={now} />
             <AirCard obs={obs} system={system} />
             <SensorsCard obs={obs} system={system} />
@@ -275,6 +276,7 @@ function BatteryNotice({ obs }: { obs: Observation }) {
   return (
     <div className="notice" role="alert">
       <StatusIcon level="warning" />
+      <Icon name="battery" />
       <span>Low battery: {low.map((b) => b.label).join(', ')}</span>
     </div>
   );
@@ -284,6 +286,7 @@ function BatteryNotice({ obs }: { obs: Observation }) {
 
 interface ChartDef {
   title: string;
+  icon: IconName;
   kind: Kind;
   series: (ChartSeries & { key: string })[];
   area?: boolean;
@@ -294,15 +297,25 @@ interface ChartDef {
 const CHARTS: ChartDef[] = [
   {
     title: 'Temperature',
+    icon: 'thermometer',
     kind: 'temp',
     series: [
       { key: 'tempF', label: 'Temperature', color: 'var(--series-2)' },
       { key: 'dewPointF', label: 'Dew point', color: 'var(--series-1)' },
     ],
   },
-  { title: 'Humidity', kind: 'percent', series: [{ key: 'humidity', label: 'Humidity', color: 'var(--series-1)' }] },
+  {
+    title: 'Humidity',
+    icon: 'droplet',
+    kind: 'percent',
+    series: [
+      { key: 'humidity', label: 'Outdoor', color: 'var(--series-1)' },
+      { key: 'indoorHumidity', label: 'Indoor', color: 'var(--series-2)' },
+    ],
+  },
   {
     title: 'Wind',
+    icon: 'wind',
     kind: 'speed',
     zeroBased: true,
     series: [
@@ -310,9 +323,10 @@ const CHARTS: ChartDef[] = [
       { key: 'windGustMph', label: 'Gust', color: 'var(--series-2)' },
     ],
   },
-  { title: 'Pressure', kind: 'pressure', series: [{ key: 'pressureRelInHg', label: 'Pressure', color: 'var(--series-1)' }] },
+  { title: 'Pressure', icon: 'gauge', kind: 'pressure', series: [{ key: 'pressureRelInHg', label: 'Pressure', color: 'var(--series-1)' }] },
   {
     title: 'Rain today (accumulated)',
+    icon: 'rain',
     kind: 'rain',
     area: true,
     zeroBased: true,
@@ -320,6 +334,7 @@ const CHARTS: ChartDef[] = [
   },
   {
     title: 'Solar radiation',
+    icon: 'sun',
     kind: 'solar',
     area: true,
     zeroBased: true,
@@ -327,6 +342,7 @@ const CHARTS: ChartDef[] = [
   },
   {
     title: 'Indoor temperature',
+    icon: 'home',
     kind: 'temp',
     series: [{ key: 'indoorTempF', label: 'Indoor', color: 'var(--series-1)' }],
   },
@@ -353,7 +369,10 @@ function ChartCard({ def, history, system }: { def: ChartDef; history: History; 
   return (
     <section className="card chart-card">
       <header className="card-head">
-        <h3>{def.title}</h3>
+        <h3>
+          <Icon name={def.icon} />
+          {def.title}
+        </h3>
         <div className="chart-tools">
           {def.series.length > 1 && (
             <ul className="legend">
