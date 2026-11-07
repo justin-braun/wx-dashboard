@@ -20,7 +20,13 @@ Station support is pluggable. The first driver reads from the **Ambient Weather 
 
 Compose always pulls `ghcr.io/justin-braun/wx-dashboard:latest`, so to upgrade, run `docker compose up -d` again. The running version appears in the dashboard footer and at `/api/health`.
 
-On first start the app backfills the last 7 days from Ambient's history API, so the charts have data right away. After that, readings arrive over Ambient's realtime feed, typically once a minute.
+On first start the app backfills the last 7 days from Ambient's history API, so the charts have data right away. After that, readings arrive over Ambient's realtime feed.
+
+### How often does it update?
+
+The app holds a persistent realtime connection (Socket.io) to Ambient, which pushes each reading as soon as Ambient receives it. Readings can't arrive faster than your station uploads to AmbientWeather.net. That interval is set in whole minutes in the awnet app, so once a minute is the fastest. Polling the REST API more often would only return the same reading again.
+
+The header shows when the last reading arrived and counts down to the next one. The countdown uses the interval the server measures from actual arrivals, and starts from a one-minute estimate until it has enough data.
 
 To try it without a station, set `STATION_DRIVER=simulator` in `.env`.
 

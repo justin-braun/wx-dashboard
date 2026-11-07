@@ -180,6 +180,8 @@ function toStation(dev: AmbientDevice): StationInfo {
 
 class AmbientCloudDriver implements StationDriver {
   readonly type = 'ambient-cloud';
+  /** Stations upload to AmbientWeather.net at most once a minute. */
+  readonly expectedIntervalMs = 60_000;
   private socket?: Socket;
   private ctx?: DriverContext;
   private watchdog?: NodeJS.Timeout;

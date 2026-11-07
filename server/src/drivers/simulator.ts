@@ -92,6 +92,10 @@ class SimulatorDriver implements StationDriver {
     private readonly backfillDays: number,
   ) {}
 
+  get expectedIntervalMs(): number {
+    return this.intervalMs;
+  }
+
   async start(ctx: DriverContext): Promise<void> {
     ctx.onStations([STATION]);
     const now = Date.now();

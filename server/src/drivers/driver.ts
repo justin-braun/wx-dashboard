@@ -20,6 +20,8 @@ export interface DriverContext {
 
 export interface StationDriver {
   readonly type: string;
+  /** Typical time between live readings; used for the "next update" countdown until real arrivals are measured. */
+  readonly expectedIntervalMs?: number;
   start(ctx: DriverContext): Promise<void>;
   stop(): Promise<void>;
 }

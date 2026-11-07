@@ -8,7 +8,7 @@ import { downsample, startOfDay, summarize, type DailySummary } from './analytic
 import { loadConfig } from './config.js';
 import { Store } from './db.js';
 import { drivers, type StationDriver } from './drivers/index.js';
-import type { DriverStatus, Observation, StationInfo } from './types.js';
+import type { Cadence, DriverStatus, Observation, StationInfo } from './types.js';
 
 const config = loadConfig();
 const app = Fastify({ logger: { level: config.logLevel } });
@@ -31,6 +31,33 @@ for (const id of stations.keys()) {
 }
 
 let status: DriverStatus = { state: 'connecting', since: Date.now() };
+
+// Arrival times of recent live readings, to measure how often data really comes in.
+const arrivals = new Map<string, number[]>();
+
+function recordArrival(stationId: string, at: number): void {
+  const list = arrivals.get(stationId) ?? [];
+  list.push(at);
+  if (list.length > 11) list.shift();
+  arrivals.set(stationId, list);
+}
+
+function cadence(stationId: string): Cadence | undefined {
+  const list = arrivals.get(stationId);
+  if (!list?.length) return undefined;
+  const gaps: number[] = [];
+  for (let i = 1; i < list.length; i++) {
+    const d = list[i] - list[i - 1];
+    if (d >= 1_000 && d <= 15 * 60_000) gaps.push(d); // ignore bursts and outages
+  }
+  gaps.sort((a, b) => a - b);
+  const median = gaps.length >= 2 ? gaps[Math.floor(gaps.length / 2)] : undefined;
+  return {
+    lastReceivedAt: list[list.length - 1],
+    intervalMs: median ?? driver?.expectedIntervalMs,
+    measured: median !== undefined,
+  };
+}
 
 function computeSummary(stationId: string): DailySummary | undefined {
   const obs = latest.get(stationId);
@@ -62,6 +89,9 @@ function snapshot() {
     status,
     driver: config.driver,
     version: config.version,
+    cadence: Object.fromEntries(
+      [...arrivals.keys()].map((id) => [id, cadence(id)]).filter(([, c]) => c !== undefined),
+    ),
   };
 }
 
@@ -80,6 +110,7 @@ const ctx = {
     const prev = latest.get(obs.stationId);
     if (prev && obs.time < prev.time) return; // stale (e.g. REST poll behind realtime)
     latest.set(obs.stationId, obs);
+    recordArrival(obs.stationId, Date.now());
 
     // Store at most once per interval; broadcast every reading.
     const last = lastStoredAt.get(obs.stationId) ?? 0;
@@ -88,7 +119,7 @@ const ctx = {
       lastStoredAt.set(obs.stationId, obs.time);
     }
     const summary = computeSummary(obs.stationId);
-    broadcast({ type: 'observation', observation: obs, summary });
+    broadcast({ type: 'observation', observation: obs, summary, cadence: cadence(obs.stationId) });
   },
   onBackfill(list: Observation[]) {
     if (!list.length) return;

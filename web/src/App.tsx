@@ -12,7 +12,16 @@ import {
   WindCard,
 } from './Cards';
 import { ago, dateTime } from './format';
-import { useHistory, useLiveStation, useNow, useStored, type History, type LiveState, type Observation } from './hooks';
+import {
+  useHistory,
+  useLiveStation,
+  useNow,
+  useStored,
+  type Cadence,
+  type History,
+  type LiveState,
+  type Observation,
+} from './hooks';
 import { LineChart, type ChartPoint, type ChartSeries } from './LineChart';
 import { convert, spec, unit, type Kind, type UnitSystem } from './units';
 
@@ -56,7 +65,7 @@ export function App() {
           <h1>{station?.name ?? 'Weather Station'}</h1>
           {station?.location && <span className="muted">{station.location}</span>}
         </div>
-        <ConnectionPill live={live} obs={obs} now={now} />
+        <ConnectionPill live={live} obs={obs} cadence={station ? live.cadence[station.id] : undefined} now={now} />
         <div className="controls">
           {live.stations.length > 1 && (
             <select aria-label="Station" value={station?.id} onChange={(e) => setStationPref(e.target.value)}>
@@ -137,11 +146,13 @@ export function App() {
 
 // ---------------------------------------------------------------- header pieces
 
-function ConnectionPill({ live, obs, now }: { live: LiveState; obs?: Observation; now: number }) {
+function ConnectionPill({ live, obs, cadence, now }: { live: LiveState; obs?: Observation; cadence?: Cadence; now: number }) {
   const age = obs ? now - obs.time : undefined;
+  // Ambient rounds reading times down to the minute, so "updated" uses when it actually arrived.
+  const updatedAt = cadence?.lastReceivedAt ?? obs?.time;
   let level: 'good' | 'warning' | 'serious' | 'critical' | 'muted';
   let text: string;
-  let title = live.status?.message ?? '';
+  let showCountdown = false;
   if (!live.socketOpen) {
     level = 'serious';
     text = 'Reconnecting to server';
@@ -153,20 +164,70 @@ function ConnectionPill({ live, obs, now }: { live: LiveState; obs?: Observation
     text = `Stale · ${ago(obs!.time, now)}`;
   } else if (live.status?.state === 'degraded') {
     level = 'warning';
-    text = `Polling · ${ago(obs?.time, now)}`;
+    text = `Polling · ${ago(updatedAt, now)}`;
+    showCountdown = true;
   } else if (obs && live.status?.state === 'connected') {
     level = 'good';
-    text = `Live · ${ago(obs.time, now)}`;
+    text = `Live · ${ago(updatedAt, now)}`;
+    showCountdown = true;
   } else {
     level = 'muted';
     text = 'Connecting';
   }
-  if (!title) title = text;
+
+  const details = [live.status?.message];
+  if (cadence?.intervalMs)
+    details.push(`Readings arrive about every ${duration(cadence.intervalMs)}${cadence.measured ? '' : ' (expected)'}`);
+  if (obs) details.push(`Station time ${dateTime(obs.time)}`);
+
   return (
-    <div className={`pill pill-${level}`} title={title} role="status">
+    <div className={`pill pill-${level}`} title={details.filter(Boolean).join('\n') || text}>
       <StatusIcon level={level} />
       <span>{text}</span>
+      {showCountdown && cadence && <Countdown cadence={cadence} now={now} />}
     </div>
+  );
+}
+
+function duration(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return r ? `${m}m ${String(r).padStart(2, '0')}s` : `${m} min`;
+}
+
+/** Ring that fills toward the next expected reading, with the time remaining. */
+function Countdown({ cadence, now }: { cadence: Cadence; now: number }) {
+  const interval = cadence.intervalMs;
+  if (!interval) return null;
+  const elapsed = Math.max(0, now - cadence.lastReceivedAt);
+  const remaining = interval - elapsed;
+  const fraction = Math.min(1, elapsed / interval);
+  const label =
+    remaining > 0
+      ? `next in ${cadence.measured ? '' : '~'}${duration(remaining)}`
+      : elapsed < interval * 2
+        ? 'update due'
+        : 'waiting for update';
+  const r = 6;
+  const circ = 2 * Math.PI * r;
+  return (
+    <span className="countdown">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="8" cy="8" r={r} className="countdown-track" />
+        <circle
+          cx="8"
+          cy="8"
+          r={r}
+          className="countdown-fill"
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - fraction)}
+          transform="rotate(-90 8 8)"
+        />
+      </svg>
+      <span>{label}</span>
+    </span>
   );
 }
 

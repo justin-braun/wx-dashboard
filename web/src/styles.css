@@ -179,6 +179,41 @@ select {
   animation: pulse 2.4s ease-in-out infinite;
 }
 
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 10px;
+  margin-left: 2px;
+  border-left: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.countdown svg {
+  flex: none;
+}
+
+.countdown-track {
+  fill: none;
+  stroke: var(--grid);
+  stroke-width: 2.5;
+}
+
+.countdown-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+@media (max-width: 480px) {
+  .pill {
+    white-space: normal;
+    flex-wrap: wrap;
+  }
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.55;

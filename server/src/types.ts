@@ -103,6 +103,16 @@ export interface StationInfo {
   timezone?: string;
 }
 
+/** When readings reach this server, and how often they tend to arrive. */
+export interface Cadence {
+  /** Epoch ms the latest live reading was received (not the reading's own timestamp). */
+  lastReceivedAt: number;
+  /** Typical gap between readings: measured median, else the driver's expectation. */
+  intervalMs?: number;
+  /** True when intervalMs comes from measured arrivals rather than a default. */
+  measured: boolean;
+}
+
 export type ConnectionState = 'connecting' | 'connected' | 'degraded' | 'disconnected' | 'error';
 
 export interface DriverStatus {

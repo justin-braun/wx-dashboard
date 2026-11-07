@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DailySummary, HistoryPoint } from '../../server/src/analytics';
-import type { DriverStatus, Observation, StationInfo } from '../../server/src/types';
+import type { Cadence, DriverStatus, Observation, StationInfo } from '../../server/src/types';
 
-export type { DailySummary, HistoryPoint, DriverStatus, Observation, StationInfo };
+export type { Cadence, DailySummary, HistoryPoint, DriverStatus, Observation, StationInfo };
 
 export interface LiveState {
   stations: StationInfo[];
   latest: Record<string, Observation>;
   summaries: Record<string, DailySummary>;
+  /** Per-station arrival timing for the "next update" countdown. */
+  cadence: Record<string, Cadence>;
   status?: DriverStatus;
   driver?: string;
   version?: string;
@@ -26,9 +28,10 @@ type ServerMessage =
       status: DriverStatus;
       driver: string;
       version?: string;
+      cadence?: Record<string, Cadence>;
     }
   | { type: 'stations'; stations: StationInfo[] }
-  | { type: 'observation'; observation: Observation; summary?: DailySummary }
+  | { type: 'observation'; observation: Observation; summary?: DailySummary; cadence?: Cadence }
   | { type: 'backfill'; stationId: string; count: number; summary?: DailySummary }
   | { type: 'summary'; stationId: string; summary: DailySummary }
   | { type: 'status'; status: DriverStatus };
@@ -39,6 +42,7 @@ export function useLiveStation(): LiveState {
     stations: [],
     latest: {},
     summaries: {},
+    cadence: {},
     socketOpen: false,
     historyVersion: 0,
   });
@@ -96,6 +100,7 @@ function reduce(s: LiveState, msg: ServerMessage): LiveState {
         status: msg.status,
         driver: msg.driver,
         version: msg.version,
+        cadence: msg.cadence ?? {},
         historyVersion: s.historyVersion + 1,
       };
     case 'stations':
@@ -106,6 +111,7 @@ function reduce(s: LiveState, msg: ServerMessage): LiveState {
         ...s,
         latest: { ...s.latest, [id]: msg.observation },
         summaries: msg.summary ? { ...s.summaries, [id]: msg.summary } : s.summaries,
+        cadence: msg.cadence ? { ...s.cadence, [id]: msg.cadence } : s.cadence,
       };
     }
     case 'backfill':
