@@ -1,0 +1,17 @@
+services:
+  wx-dashboard:
+    image: ghcr.io/justin-braun/wx-dashboard:latest
+    pull_policy: always
+    container_name: wx-dashboard
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      TZ: ${TZ:-America/Chicago}
+    volumes:
+      - wx-data:/data
+
+volumes:
+  wx-data:

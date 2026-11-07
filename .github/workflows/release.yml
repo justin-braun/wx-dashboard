@@ -1,0 +1,53 @@
+name: Release
+
+# Bumps the version, commits, tags vX.Y.Z, then runs the image build for that tag.
+# Start it from the Actions tab, or: gh workflow run release.yml -f bump=minor
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump version
+        id: bump
+        run: |
+          npm version "${{ inputs.bump }}" --no-git-tag-version --workspaces --include-workspace-root >/dev/null
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "New version: $version"
+
+      - name: Commit and tag
+        run: |
+          v="v${{ steps.bump.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json server/package.json web/package.json
+          git commit -m "Release $v"
+          git tag -a "$v" -m "Release $v"
+          git push origin HEAD:main "$v"
+
+      # Tags pushed with GITHUB_TOKEN don't trigger workflows, so start the build explicitly.
+      - name: Build and publish image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run docker-publish.yml --ref "v${{ steps.bump.outputs.version }}"

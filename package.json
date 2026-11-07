@@ -1,0 +1,16 @@
+{
+  "name": "wx-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted realtime weather station dashboard",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "build": "npm run build -w web && npm run build -w server",
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "start": "npm start -w server"
+  }
+}
